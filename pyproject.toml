@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=74.1.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loan"
+version = "0.0.1"
+authors = [
+  { name="Jonas Engström", email="JonasEngstrom@users.noreply.github.com" },
+]
+description = "Tools for calculating costs and time required to pay of a mortgage in Sweden over time, compared to investing in an index fund and paying off the principal as a lump sum."
+readme = "README.md"
+requires-python = ">=3.12.3"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/JonasEngstrom/loan"
+Issues = "https://github.com/JonasEngstrom/loan/issues"
