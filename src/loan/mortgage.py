@@ -7,13 +7,23 @@ class Mortgage:
     loan as a lump sum instead.
 
     Attributes:
-        initial_principal: The original amount borrowed.
+        asset_value: Value of the asset mortgaged.
+        initial_principal: Original amount borrowed.
+        principal: Amount borrowed.
     """
 
-    def __init__(self, initial_principal: float) -> None:
+    def __init__(self, asset_value: float, principal: float) -> None:
         """Initialize Mortgage instance.
 
         Args:
-            inital_principal: Initial amount borrowed.
+            asset_value: Value of the asset mortgaged.
+            principal: Amount borrowed.
         """
-        self.initial_principal = initial_principal
+        self.asset_value = asset_value
+        self.initial_principal = principal
+        self.principal = principal
+
+    @property
+    def loan_to_value_ratio(self) -> float:
+        """Loan-to-value ratio."""
+        return self.principal / self.asset_value
