@@ -8,22 +8,32 @@ class Mortgage:
 
     Attributes:
         asset_value: Value of the asset mortgaged.
+        household_gross_income: Household income before tax.
         initial_principal: Original amount borrowed.
         principal: Amount borrowed.
     """
 
-    def __init__(self, asset_value: float, principal: float) -> None:
+    def __init__(
+        self, asset_value: float, household_gross_income: float, principal: float
+    ) -> None:
         """Initialize Mortgage instance.
 
         Args:
             asset_value: Value of the asset mortgaged.
+            household_gross_income: Household income before tax.
             principal: Amount borrowed.
         """
         self.asset_value = asset_value
+        self.household_gross_income = household_gross_income
         self.initial_principal = principal
         self.principal = principal
 
     @property
     def loan_to_value_ratio(self) -> float:
-        """Loan-to-value ratio."""
+        """Ratio of principal to asset value."""
         return self.principal / self.asset_value
+
+    @property
+    def debt_ratio(self) -> float:
+        """Ratio of principal to household gross income."""
+        return self.principal / self.household_gross_income
