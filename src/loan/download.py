@@ -65,6 +65,13 @@ def consumer_price_index():
 
 
 def policy_rate():
+    """Download historical Swedish policy rates.
+    
+    Download historical policy rates from the Swedish National Bank.
+    
+    Returns:
+        A pandas data frame.
+    """
     url = f"https://api.riksbank.se/swea/v1/Observations/SECBREPOEFF/1994-06-01/{datetime.now().strftime('%Y-%m-%d')}"
     request = requests.get(url)
     if request.status_code == 200:
