@@ -24,3 +24,40 @@ def government_borrowing_rate():
         raise ConnectionError(
             f"The connection to {url} got a status code of {request.status_code}, instead of status code 200."
         )
+
+
+def consumer_price_index():
+    """Download historical Swedish consumer price index.
+
+    Download historical comnusmer price index data from Statistics Sweden.
+
+    Returns:
+        A pandas data frame.
+    """
+    url = "https://api.scb.se/OV0104/v1/doris/sv/ssd/START/PR/PR0101/PR0101A/KPItotM"
+    query = {
+        "query": [
+            {
+                "code": "ContentsCode",
+                "selection": {"filter": "item", "values": ["000004VU"]},
+            }
+        ],
+        "response": {"format": "csv3"},
+    }
+    request = requests.post(url, json=query)
+    if request.status_code == 200:
+        data_string = StringIO(request.text)
+        return_df = (
+            pd.read_csv(data_string)
+            .drop(["ContentsCode"], axis=1)
+            .rename(columns={"Tid": "Datum", "TAB5737": "Konsumentprisindex"})
+        )
+        return_df["Datum"] = return_df["Datum"].str.replace(
+            r"M(\d+)", r"-\1-01", regex=True
+        )
+        return_df["Datum"] = pd.to_datetime(return_df["Datum"])
+        return return_df
+    else:
+        raise ConnectionError(
+            f"The connection to {url} got a status code of {request.status_code}, instead of status code 200."
+        )

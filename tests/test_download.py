@@ -7,7 +7,7 @@ import numpy as np
 
 
 class MockResponse:
-    """Mock requests.get responses."""
+    """Mock requests.get/post responses."""
 
     def __init__(self, text, status_code):
         self.text = text
@@ -22,6 +22,12 @@ def mocked_request_get_404(*args, **kwargs):
 def mocked_requests_get_200_gbr(*args, **kwargs):
     """Mock government borrowing rate CSV."""
     text = "Datum;Räntesats %;Medelvärde hittills i år\r\n2024-11-15;2,11;2,16\r\n2024-11-08;2,10;2,16\r\n2024-11-01;2,02;2,16\r\n"
+    return MockResponse(text, 200)
+
+
+def mocked_requests_get_200_cpi(*args, **kwargs):
+    """Mock consumer price index CSV."""
+    text = '"Tid","ContentsCode","TAB5737"\r\n"1980M01","000004VU",95.30\r\n"1980M02","000004VU",96.80\r\n"1980M03","000004VU",97.20\r\n'
     return MockResponse(text, 200)
 
 
@@ -48,3 +54,21 @@ class TestDownload(unittest.TestCase):
             ["Datum", "Räntesats %", "Medelvärde hittills i år"],
         )
         self.assertEqual(test_df.iloc[2, 2], np.float64(2.16))
+
+    @patch("requests.post", side_effect=mocked_request_get_404)
+    def test_consumer_price_index_status_code_not_200(self, mock_post) -> None:
+        """Assert consumer_price_index raises error if status not 200."""
+        with self.assertRaises(ConnectionError):
+            download.consumer_price_index()
+
+    @patch("requests.post", side_effect=mocked_requests_get_200_cpi)
+    def test_consumer_price_index_status_code_200(self, mock_post) -> None:
+        """Assert consumer_price_index imports data correctly."""
+        test_df = download.consumer_price_index()
+        self.assertEqual(
+            list(
+                test_df.columns.values,
+            ),
+            ["Datum", "Konsumentprisindex"],
+        )
+        self.assertEqual(test_df.iloc[1, 1], np.float64(96.8))
