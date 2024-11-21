@@ -85,7 +85,7 @@ class TestDownload(unittest.TestCase):
             list(
                 test_df.columns.values,
             ),
-            ["Datum", "Räntesats %", "Medelvärde hittills i år"],
+            ["date", "government_borrowing_rate", "current_year_average"],
         )
         self.assertEqual(test_df.iloc[2, 2], np.float64(2.16))
 
