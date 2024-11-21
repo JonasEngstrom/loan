@@ -4,14 +4,30 @@ from unittest.mock import patch
 from src.loan import download
 
 import numpy as np
+import json
 
 
 class MockResponse:
-    """Mock requests.get/post responses."""
+    """Mock requests.get/post responses.
+
+    Attributes:
+        text: Text and JSON value returned.
+        status_code: Request status code returned.
+    """
 
     def __init__(self, text, status_code):
+        """Set text (and thereby json) and status code.
+
+        Args:
+            test: Text and JSON value to return.
+            status_code: Request status code to return.
+        """
         self.text = text
         self.status_code = status_code
+
+    def json(self):
+        """Return text attribute as json, for testing."""
+        return json.loads(self.text)
 
 
 def mocked_request_404(*args, **kwargs):
@@ -34,6 +50,12 @@ def mocked_requests_post_200_cpi(*args, **kwargs):
 def mocked_requests_get_200_pr(*args, **kwargs):
     """Mock policy rate CSV."""
     text = '[{"date":"1994-06-01","value":6.95},{"date":"1994-06-02","value":6.95},{"date":"1994-06-03","value":6.95}]'
+    return MockResponse(text, 200)
+
+
+def mocked_requests_get_200_omxs30(*args, **kwargs):
+    """Mock OMXS30 CSV."""
+    text = '{"data":{"chartData":{"orderbookId":"SE0000337842","assetClass":"INDEXES","isin":"SE0000337842","symbol":"OMXS30","company":"OMX Stockholm 30 Index","timeAsOf":"2024-11-20","lastSalePrice":"2,484.49","netChange":"-8.99","percentageChange":"-0.36%","deltaIndicator":"up","previousClose":"2,493.47"},"charts":{"headers":{"dateTime":"Date","high":"High price","low":"Low price","close":"Closing price","average":"Average price","totalVolume":"Total volume","turnover":"Turnover"},"rows":[{"dateTime":"2024-11-20","bid":"","ask":"","open":"2,508.29","high":"2,513.74","low":"2,483.49","close":"2,484.49","average":"","totalVolume":"1","turnover":"","trades":""},{"dateTime":"2024-11-19","bid":"","ask":"","open":"2,515.21","high":"2,518.15","low":"2,462.17","close":"2,493.48","average":"","totalVolume":"1","turnover":"","trades":""},{"dateTime":"2024-11-18","bid":"","ask":"","open":"2,509.39","high":"2,518.88","low":"2,489.89","close":"2,506.91","average":"","totalVolume":"1","turnover":"","trades":""},{"dateTime":"2024-11-15","bid":"","ask":"","open":"2,513.49","high":"2,530.64","low":"2,506.38","close":"2,509.99","average":"","totalVolume":"1","turnover":"","trades":""}]}},"messages":null,"status":{"timestamp":"2024-11-21T02:02:23+0100","rCode":200,"bCodeMessage":null,"developerMessage":""}}'
     return MockResponse(text, 200)
 
 
@@ -96,3 +118,33 @@ class TestDownload(unittest.TestCase):
             ["date", "policy_rate"],
         )
         self.assertEqual(test_df.iloc[2, 1], np.float64(6.95))
+
+    @patch("requests.get", side_effect=mocked_request_404)
+    def test_omxs30_status_code_not_200(self, mock_get) -> None:
+        """Assert omxs30x raises error if status not 200."""
+        with self.assertRaises(ConnectionError):
+            download.omxs30()
+
+    @patch("requests.get", side_effect=mocked_requests_get_200_omxs30)
+    def test_omxs30_status_code_200(self, mock_get) -> None:
+        """Assert omxs30 imports data correctly."""
+        test_df = download.omxs30()
+        self.assertEqual(
+            list(
+                test_df.columns.values,
+            ),
+            [
+                "date",
+                "bid",
+                "ask",
+                "open",
+                "high",
+                "low",
+                "close",
+                "average",
+                "total_volume",
+                "turnover",
+                "trades",
+            ],
+        )
+        self.assertEqual(test_df.iloc[1, 3], np.float64(2515.21))

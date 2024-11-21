@@ -66,18 +66,52 @@ def consumer_price_index():
 
 def policy_rate():
     """Download historical Swedish policy rates.
-    
+
     Download historical policy rates from the Swedish National Bank.
-    
+
     Returns:
         A pandas data frame.
     """
-    url = f"https://api.riksbank.se/swea/v1/Observations/SECBREPOEFF/1994-06-01/{datetime.now().strftime('%Y-%m-%d')}"
+    series_id = "SECBREPOEFF"
+    start_date = "1994-06-01"
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    url = f"https://api.riksbank.se/swea/v1/Observations/{series_id}/{start_date}/{end_date}"
     request = requests.get(url)
     if request.status_code == 200:
         string_data = StringIO(request.text)
         return_df = pd.read_json(string_data)
         return_df = return_df.rename(columns={"value": "policy_rate"})
+        return return_df
+    else:
+        raise ConnectionError(
+            f"The connection to {url} got a status code of {request.status_code}, instead of status code 200."
+        )
+
+
+def omxs30():
+    """Download historical OMXS30 index data.
+
+    Donwload historical data on the OMX Stockholm 30 index from Nasdaq.
+
+    Returns:
+        A pandas data frame.
+    """
+    today = datetime.now()
+    instrument = "SE0000337842"
+    start_date = today.replace(year=today.year - 10).strftime("%Y-%m-%d")
+    end_date = today.strftime("%Y-%m-%d")
+    url = f"https://api.nasdaq.com/api/nordic/instruments/{instrument}/chart/download?assetClass=INDEXES&fromDate={start_date}&toDate={end_date}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    request = requests.get(url, headers=headers)
+    if request.status_code == 200:
+        json_data = request.json().get("data", {}).get("charts", {}).get("rows", {})
+        return_df = pd.DataFrame(json_data).replace(",", "", regex=True)
+        numeric_columns = return_df.columns.drop(["dateTime"])
+        return_df[numeric_columns] = return_df[numeric_columns].apply(pd.to_numeric)
+        return_df["dateTime"] = pd.to_datetime(return_df["dateTime"])
+        return_df = return_df.rename(
+            columns={"dateTime": "date", "totalVolume": "total_volume"}
+        )
         return return_df
     else:
         raise ConnectionError(
