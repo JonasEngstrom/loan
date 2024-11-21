@@ -59,6 +59,12 @@ def mocked_requests_get_200_omxs30(*args, **kwargs):
     return MockResponse(text, 200)
 
 
+def mocked_requests_get_200_list_rates(*args, **kwargs):
+    """Mock OMXS30 CSV."""
+    text = '[{"CategoryName": "Aktuella listr\u00e4ntor - annonserade r\u00e4ntor","CategorySubHeader": null,"CategoryDescription": "R\u00e4ntorna \u00e4r senast uppdaterade 2024-11-15","Headers": [{"Id": 0,"Name": "F\u00f6retag","Description": null,"ComparisonCategoryId": 0},{"Id": 10280,"Name": "R\u00f6rlig","Description": null,"ComparisonCategoryId": 2535},{"Id": 10226,"Name": "3 m\u00e5n","Description": null,"ComparisonCategoryId": 2535},{"Id": 10227,"Name": "1 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10228,"Name": "2 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10229,"Name": "3 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10230,"Name": "4 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10231,"Name": "5 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10232,"Name": "6 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10233,"Name": "7 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10234,"Name": "8 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10235,"Name": "9 \u00e5r","Description": null,"ComparisonCategoryId": 2535},{"Id": 10236,"Name": "10 \u00e5r","Description": null,"ComparisonCategoryId": 2535}],"CompensationRows": [{"CompensationItems": [{"CompensationValue": "Avanza Bank","Description": null,"Date": "2022-11-07","Url": "http://www.avanza.se","ProductName": "Superbol\u00e5net","HideDate": true,"ComparisonCategoryId": 0,"HeaderId": 0},{"CompensationValue": "3,01 - 3,35","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10280},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10226},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10227},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10228},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10229},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10230},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10231},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10232},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10233},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10234},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10235},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10236}]},{"CompensationItems": [{"CompensationValue": "Bluestep","Description": null,"Date": "2022-11-07","Url": "http://www.bluestep.se/","ProductName": "","HideDate": true,"ComparisonCategoryId": 0,"HeaderId": 0},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10280},{"CompensationValue": "5,90 - 10,95","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10226},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10227},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10228},{"CompensationValue": "5,70 - 10,95","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10229},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10230},{"CompensationValue": "6,05 - 10,95","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10231},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10232},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10233},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10234},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10235},{"CompensationValue": "","Description": null,"Date": null,"Url": null,"ProductName": null,"HideDate": false,"ComparisonCategoryId": 2535,"HeaderId": 10236}]}],"CategoryId": 2535,"AnchorLink": "aktuella-listrantor---annonserade-rantor"}]'
+    return MockResponse(text, 200)
+
+
 class TestDownload(unittest.TestCase):
     """Tests the functions in download.py."""
 
@@ -148,3 +154,37 @@ class TestDownload(unittest.TestCase):
             ],
         )
         self.assertEqual(test_df.iloc[1, 3], np.float64(2515.21))
+
+    @patch("requests.get", side_effect=mocked_request_404)
+    def test_list_rates_status_code_not_200(self, mock_get) -> None:
+        """Assert list_rates raises error if status not 200."""
+        with self.assertRaises(ConnectionError):
+            download.list_rates()
+
+    @patch("requests.get", side_effect=mocked_requests_get_200_list_rates)
+    def test_list_rates_status_code_200(self, mock_get) -> None:
+        """Assert list_rates imports data correctly."""
+        test_df = download.list_rates()
+        self.assertEqual(
+            list(
+                test_df.columns.values,
+            ),
+            [
+                "bank",
+                "floating",
+                "three_months",
+                "one_year",
+                "two_years",
+                "three_years",
+                "four_years",
+                "five_years",
+                "six_years",
+                "seven_years",
+                "eight_years",
+                "nine_years",
+                "ten_years",
+                "date",
+            ],
+        )
+        self.assertEqual(test_df.iloc[0, 1], np.float64(3.01))
+        self.assertEqual(test_df.iloc[1, 2], np.float64(5.9))
