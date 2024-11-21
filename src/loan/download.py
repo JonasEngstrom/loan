@@ -20,6 +20,13 @@ def government_borrowing_rate():
         decimal_periods = request.text.replace(",", ".")
         data_string = StringIO(decimal_periods)
         return_df = pd.read_csv(data_string, delimiter=";", parse_dates=["Datum"])
+        return_df = return_df.rename(
+            columns={
+                "Datum": "date",
+                "Räntesats %": "government_borrowing_rate",
+                "Medelvärde hittills i år": "current_year_average",
+            }
+        )
         return return_df
     else:
         raise ConnectionError(
