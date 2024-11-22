@@ -54,3 +54,13 @@ class HistoricTables:
             .drop(["high", "low", "average", "total_volume", "turnover"], axis=1)
         )
         return return_df
+
+    @property
+    def government_borrowing_rate(self):
+        """Formats governemnt borrowing rate table."""
+        return_df = (
+            self._goverment_borrowing_rate.drop(["current_year_average"], axis=1)
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+        return return_df
