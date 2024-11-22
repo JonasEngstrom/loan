@@ -50,3 +50,14 @@ class TestHistoricTables(unittest.TestCase):
     def test_policy_rate(self):
         """Test that policy_rate property works as expected."""
         self.assertEqual(self.checker.policy_rate.iloc[0, 1], np.float64(6.95))
+
+    def test__calculate_rate_of_change(self):
+        start_value = 100
+        end_value = 200
+        time_delta = 4
+        rate_of_change = self.checker._calculate_rate_of_change(
+            start_value, end_value, time_delta
+        )
+        self.assertAlmostEqual(
+            start_value * (1 + rate_of_change) ** time_delta, end_value
+        )

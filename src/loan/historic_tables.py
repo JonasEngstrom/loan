@@ -35,8 +35,23 @@ class HistoricTables:
         self._policy_rate = policy_rate
         self._old_omxs30 = old_omxs30
 
+    @classmethod
+    def _calculate_rate_of_change(
+        cls, start_value: float, end_value: float, time_delta: float
+    ) -> float:
+        """Calculate rate of change as a geometric mean.
+
+        Calculates the rate of change between two values per unit of time.
+
+        Args:
+            start_value: Start value.
+            end_value: End value.
+            time_delta: Time between start_value and end_value in time units.
+        """
+        return (end_value / start_value) ** (1 / time_delta) - 1
+
     @property
-    def omxs30(self):
+    def omxs30(self) -> pd.DataFrame:
         """Merges old and new omxs30 data.
 
         Returns:
@@ -56,7 +71,7 @@ class HistoricTables:
         return return_df
 
     @property
-    def government_borrowing_rate(self):
+    def government_borrowing_rate(self) -> pd.DataFrame:
         """Formats governemnt borrowing rate table."""
         return_df = (
             self._goverment_borrowing_rate.drop(["current_year_average"], axis=1)
@@ -66,7 +81,7 @@ class HistoricTables:
         return return_df
 
     @property
-    def consumer_price_index(self):
+    def consumer_price_index(self) -> pd.DataFrame:
         """Formats consumer price index."""
         return_df = self._consumer_price_index.sort_values("date").reset_index(
             drop=True
@@ -74,7 +89,7 @@ class HistoricTables:
         return return_df
 
     @property
-    def policy_rate(self):
+    def policy_rate(self) -> pd.DataFrame:
         """Formats policy rate."""
         return_df = self._policy_rate.sort_values("date").reset_index(drop=True)
         return return_df
