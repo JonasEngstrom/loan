@@ -67,4 +67,4 @@ class TestLocalData(unittest.TestCase):
     def test_local_merged_table(self) -> None:
         """Test that local_merged_table returns expected table."""
         test_data = local_data.local_merged_table()
-        self.assertEqual(test_data.iloc[0, 1], np.float64(248.40))
+        self.assertEqual(test_data.iloc[0, 1], np.float64(8.89))

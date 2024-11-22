@@ -104,7 +104,6 @@ def local_merged_table() -> None:
         A pandas data frame.
     """
     loading_functions = [
-        local_consumer_price_index,
         local_government_borrowing_rate,
         local_complete_omxs30,
         local_policy_rate,
@@ -119,7 +118,6 @@ def local_merged_table() -> None:
     return_df = return_df[
         [
             "date",
-            "consumer_price_index",
             "government_borrowing_rate",
             "close",
             "policy_rate",
