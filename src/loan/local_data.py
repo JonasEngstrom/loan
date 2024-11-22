@@ -75,3 +75,60 @@ def local_list_rates():
     data_path = files("src.loan.data").joinpath("list_rates.csv")
     return_df = pd.read_csv(data_path, parse_dates=["date"])
     return return_df
+
+
+def local_complete_omxs30():
+    """Merge data from old_omxs30() and local_omxs30.
+
+    Return:
+        A pandas data frame.
+    """
+    old_omxs30 = old_omxs30_data()
+    new_omxs30 = local_omxs30()
+    return_df = (
+        pd.concat([old_omxs30, new_omxs30[old_omxs30.columns.values]])
+        .drop_duplicates()
+        .sort_values("date")
+    )
+    return return_df
+
+
+def local_merged_table() -> None:
+    """Return a table of merged historic datat.
+
+    Merge data on consumer price index, government borrowing rate, OMXS30
+    index, and policy rate in one table. Remove incomplete cases and fill NaN
+    values forward.
+
+    Returns:
+        A pandas data frame.
+    """
+    loading_functions = [
+        local_consumer_price_index,
+        local_government_borrowing_rate,
+        local_complete_omxs30,
+        local_policy_rate,
+    ]
+    data_frame_list = [i() for i in loading_functions]
+    all_dates = pd.concat([i["date"] for i in data_frame_list])
+    start_date = min(all_dates)
+    end_date = max(all_dates)
+    return_df = pd.DataFrame({"date": pd.date_range(start_date, end_date)})
+    for i in data_frame_list:
+        return_df = pd.merge(return_df, i, how="left")
+    return_df = return_df[
+        [
+            "date",
+            "consumer_price_index",
+            "government_borrowing_rate",
+            "close",
+            "policy_rate",
+        ]
+    ]
+    return_df = (
+        return_df.rename(columns={"close": "omxs30"})
+        .sort_values("date")
+        .ffill()
+        .dropna()
+    )
+    return return_df
