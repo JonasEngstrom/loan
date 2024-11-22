@@ -46,3 +46,7 @@ class TestHistoricTables(unittest.TestCase):
         self.assertEqual(
             self.checker.consumer_price_index.iloc[0, 1], np.float64(95.30)
         )
+
+    def test_policy_rate(self):
+        """Test that policy_rate property works as expected."""
+        self.assertEqual(self.checker.policy_rate.iloc[0, 1], np.float64(6.95))

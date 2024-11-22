@@ -72,3 +72,9 @@ class HistoricTables:
             drop=True
         )
         return return_df
+
+    @property
+    def policy_rate(self):
+        """Formats policy rate."""
+        return_df = self._policy_rate.sort_values("date").reset_index(drop=True)
+        return return_df
