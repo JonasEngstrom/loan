@@ -64,3 +64,11 @@ class HistoricTables:
             .reset_index(drop=True)
         )
         return return_df
+
+    @property
+    def consumer_price_index(self):
+        """Formats consumer price index."""
+        return_df = self._consumer_price_index.sort_values("date").reset_index(
+            drop=True
+        )
+        return return_df

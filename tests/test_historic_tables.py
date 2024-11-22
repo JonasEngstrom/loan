@@ -36,7 +36,13 @@ class TestHistoricTables(unittest.TestCase):
         self.assertEqual(self.checker.omxs30.iloc[0, 1], np.float64(125.00))
 
     def test_government_borrowing_rate(self):
-        """Test that omxs30 property works as expected."""
+        """Test that government_borrowing_rate property works as expected."""
         self.assertEqual(
             self.checker.government_borrowing_rate.iloc[0, 1], np.float64(10.73)
+        )
+
+    def test_consumer_price_index(self):
+        """Test that consumer_price_index property works as expected."""
+        self.assertEqual(
+            self.checker.consumer_price_index.iloc[0, 1], np.float64(95.30)
         )
