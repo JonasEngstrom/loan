@@ -11,6 +11,14 @@ def old_omxs30_data():
     """
     data_path = files("src.loan.data").joinpath("old_omxs30_data.csv")
     return_df = pd.read_csv(data_path, parse_dates=["date"])
+    return_df = return_df.rename(
+        columns={
+            "high_price": "high",
+            "low_price": "low",
+            "closing_price": "close",
+            "average_price": "average",
+        }
+    )
     return return_df
 
 
