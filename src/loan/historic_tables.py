@@ -1,3 +1,5 @@
+import pandas as pd
+
 from src.loan import local_data
 
 
@@ -15,20 +17,40 @@ class HistoricTables:
         """Initialized HistoricTables object.
 
         Args:
-            new_omxs30: Pandas dataframe from download.omxs30 or
+            new_omxs30: Pandas data frame from download.omxs30 or
                 local_data.local_omxs30.
-            goverment_borrowing_rate: Pandas dataframe from
+            goverment_borrowing_rate: Pandas data frame from
                 download.government_borrowing_rate or
                 local_data.local_government_borrowing_rate.
-            consumer_price_index: Pandas dataframe from
+            consumer_price_index: Pandas data frame from
                 download.consumer_price_index or
                 local_data.local_consumer_price_index.
-            policy_rate: Pandas dataframe from download.policy_rate or
+            policy_rate: Pandas data frame from download.policy_rate or
                 local_data.policy_rate.
-            old_omxs30: Pandas dataframe from local_data.old_omxs30_data.
+            old_omxs30: Pandas data frame from local_data.old_omxs30_data.
         """
         self._new_omxs30 = new_omxs30
         self._goverment_borrowing_rate = goverment_borrowing_rate
         self._consumer_price_index = consumer_price_index
         self._policy_rate = policy_rate
         self._old_omxs30 = old_omxs30
+
+    @property
+    def omxs30(self):
+        """Merges old and new omxs30 data.
+
+        Returns:
+            A pandas data frame.
+        """
+        old_omxs30_last_date = self._old_omxs30["date"].max()
+        new_omxs30_data = self._new_omxs30.query("date > @old_omxs30_last_date")[
+            self._old_omxs30.columns
+        ]
+        return_df = (
+            pd.concat([self._old_omxs30, new_omxs30_data])
+            .sort_values("date")
+            .reset_index(drop=True)
+            .rename(columns={"close": "omxs30"})
+            .drop(["high", "low", "average", "total_volume", "turnover"], axis=1)
+        )
+        return return_df

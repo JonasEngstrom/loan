@@ -3,6 +3,8 @@ import unittest
 from src.loan.historic_tables import HistoricTables
 from src.loan import local_data
 
+import numpy as np
+
 
 class TestHistoricTables(unittest.TestCase):
     """Test case for HistoricTables class."""
@@ -28,3 +30,7 @@ class TestHistoricTables(unittest.TestCase):
             self.checker._policy_rate.equals(local_data.local_policy_rate())
         )
         self.assertTrue(self.checker._old_omxs30.equals(local_data.old_omxs30_data()))
+
+    def test_omxs30(self):
+        """Test that omxs30 property works as expected."""
+        self.assertEqual(self.checker.omxs30.iloc[0, 1], np.float64(125.00))
