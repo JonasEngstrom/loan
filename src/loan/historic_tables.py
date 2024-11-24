@@ -42,13 +42,16 @@ class HistoricTables:
         """Calculate rate of change as a geometric mean.
 
         Calculates the rate of change between two values per unit of time.
+        Uses the formula (end_value / start_value) ** (1 / time_delta).
+        In reality a - 1 should be added at the end to calculate rate of change
+        but this was omitted to simplify further calculations usning the rate.
 
         Args:
             start_value: Start value.
             end_value: End value.
             time_delta: Time between start_value and end_value in time units.
         """
-        return (end_value / start_value) ** (1 / time_delta) - 1
+        return (end_value / start_value) ** (1 / time_delta)
 
     @property
     def omxs30(self) -> pd.DataFrame:
@@ -68,6 +71,17 @@ class HistoricTables:
             .rename(columns={"close": "omxs30"})
             .drop(["high", "low", "average", "total_volume", "turnover"], axis=1)
         )
+        return_df = (
+            pd.DataFrame(
+                {"date": pd.date_range(min(return_df["date"]), max(return_df["date"]))}
+            )
+            .merge(return_df, how="left")
+            .ffill()
+        )
+        return_df["omxs30_change_multiplier"] = (
+            return_df["omxs30"].shift(-1) / return_df["omxs30"]
+        )
+        return_df = return_df.drop(["omxs30"], axis=1).dropna()
         return return_df
 
     @property
@@ -86,6 +100,19 @@ class HistoricTables:
         return_df = self._consumer_price_index.sort_values("date").reset_index(
             drop=True
         )
+        return_df["time_delta"] = (
+            return_df["date"].shift(-1) - return_df["date"]
+        ).apply(lambda x: x.days)
+        return_df["consumer_price_index_change_multiplier"] = (
+            self._calculate_rate_of_change(
+                return_df["consumer_price_index"],
+                return_df["consumer_price_index"].shift(-1),
+                return_df["time_delta"],
+            )
+        )
+        return_df = return_df.drop(
+            ["time_delta", "consumer_price_index"], axis=1
+        ).dropna()
         return return_df
 
     @property

@@ -33,7 +33,7 @@ class TestHistoricTables(unittest.TestCase):
 
     def test_omxs30(self):
         """Test that omxs30 property works as expected."""
-        self.assertEqual(self.checker.omxs30.iloc[0, 1], np.float64(125.00))
+        self.assertEqual(self.checker.omxs30.iloc[0, 1], np.float64(1.0074400000000001))
 
     def test_government_borrowing_rate(self):
         """Test that government_borrowing_rate property works as expected."""
@@ -44,7 +44,7 @@ class TestHistoricTables(unittest.TestCase):
     def test_consumer_price_index(self):
         """Test that consumer_price_index property works as expected."""
         self.assertEqual(
-            self.checker.consumer_price_index.iloc[0, 1], np.float64(95.30)
+            self.checker.consumer_price_index.iloc[0, 1], np.float64(1.000503907035366)
         )
 
     def test_policy_rate(self):
@@ -58,6 +58,4 @@ class TestHistoricTables(unittest.TestCase):
         rate_of_change = self.checker._calculate_rate_of_change(
             start_value, end_value, time_delta
         )
-        self.assertAlmostEqual(
-            start_value * (1 + rate_of_change) ** time_delta, end_value
-        )
+        self.assertAlmostEqual(start_value * (rate_of_change) ** time_delta, end_value)
