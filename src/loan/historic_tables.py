@@ -2,9 +2,14 @@ import pandas as pd
 
 from src.loan import local_data
 
+from datetime import datetime
+
 
 class HistoricTables:
     """Class for formatting historic finance tables."""
+
+    # Minimum standard rate (swe: schablonintäkt) in percent.
+    minimum_standard_rate = 1.25
 
     def __init__(
         self,
@@ -53,6 +58,29 @@ class HistoricTables:
         """
         return (end_value / start_value) ** (1 / time_delta)
 
+    @classmethod
+    def _expand_date_range(self, data_frame):
+        """Expand pandas date range and forward fill.
+
+        Args:
+            data_frame: A pandas data frame with a column named date.
+
+        Returns:
+            A pandas data frame.
+        """
+        return_df = (
+            pd.DataFrame(
+                {
+                    "date": pd.date_range(
+                        min(data_frame["date"]), max(data_frame["date"])
+                    )
+                }
+            )
+            .merge(data_frame, how="left")
+            .ffill()
+        )
+        return return_df
+
     @property
     def omxs30(self) -> pd.DataFrame:
         """Merges old and new omxs30 data.
@@ -71,13 +99,7 @@ class HistoricTables:
             .rename(columns={"close": "omxs30"})
             .drop(["high", "low", "average", "total_volume", "turnover"], axis=1)
         )
-        return_df = (
-            pd.DataFrame(
-                {"date": pd.date_range(min(return_df["date"]), max(return_df["date"]))}
-            )
-            .merge(return_df, how="left")
-            .ffill()
-        )
+        return_df = self._expand_date_range(return_df)
         return_df["omxs30_change_multiplier"] = (
             return_df["omxs30"].shift(-1) / return_df["omxs30"]
         )
@@ -86,12 +108,47 @@ class HistoricTables:
 
     @property
     def government_borrowing_rate(self) -> pd.DataFrame:
-        """Formats governemnt borrowing rate table."""
+        """Formats government borrowing rate table."""
         return_df = (
             self._goverment_borrowing_rate.drop(["current_year_average"], axis=1)
             .sort_values("date")
             .reset_index(drop=True)
         )
+        return return_df
+
+    @property
+    def standard_rate(self) -> pd.DataFrame:
+        """Calculate standard rate (swe: schablonintäkt).
+
+        Calculates the standard rate (swe: schablonintäkt) to be used for
+        calculating the capital gains tax (swe: avkastningsskatt) for each date
+        during a year.
+
+        See: https://www.avanza.se/lar-dig-mer/avanza-akademin/skatt-deklaration/hur-beskattas-en-kapitalforsakring.html
+        for details on how the calculation is performed.
+
+        Returns:
+            A pandas data frame.
+        """
+        return_df = HistoricTables._expand_date_range(self.government_borrowing_rate)
+        return_df["standard_rate"] = (
+            return_df["government_borrowing_rate"].shift(1) + 1
+        ).apply(lambda x: 1.25 if x < 1.25 else x)
+        return_df["date"] = return_df.loc[
+            (return_df["date"].dt.month == 11) & (return_df["date"].dt.day == 30),
+            ("date"),
+        ].apply(lambda x: x.replace(year=x.year + 1, month=1, day=1))
+        return_df = return_df.drop(["government_borrowing_rate"], axis=1).dropna()
+        max_date = return_df.loc[return_df["date"] == return_df["date"].max(), :]
+        max_date.loc[:, ("date")] = max_date.loc[:, ("date")].apply(
+            lambda x: datetime(year=x.year, month=12, day=31)
+        )
+        return_df = pd.concat([return_df, max_date])
+        return_df = self._expand_date_range(return_df).reset_index(drop=True)
+        return_df.loc[return_df["date"].dt.month > 6, ("standard_rate")] = (
+            return_df["standard_rate"] / 2
+        )
+        return_df.loc[:, ("standard_rate")] = return_df["standard_rate"] / 100
         return return_df
 
     @property

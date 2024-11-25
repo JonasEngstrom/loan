@@ -4,6 +4,9 @@ from src.loan.historic_tables import HistoricTables
 from src.loan import local_data
 
 import numpy as np
+import pandas as pd
+
+from datetime import datetime
 
 
 class TestHistoricTables(unittest.TestCase):
@@ -59,3 +62,27 @@ class TestHistoricTables(unittest.TestCase):
             start_value, end_value, time_delta
         )
         self.assertAlmostEqual(start_value * (rate_of_change) ** time_delta, end_value)
+
+    def test_standard_rate(self):
+        """Test that standard rate is calculated as expected."""
+        tax_amount = (
+            pd.merge(
+                pd.DataFrame(
+                    {
+                        "date": [
+                            datetime(2024, 1, 1),
+                            datetime(2024, 2, 2),
+                            datetime(2024, 7, 1),
+                        ],
+                        "amount": [2e5, 5e4, 5e4],
+                    }
+                ),
+                self.checker.standard_rate,
+                how="left",
+            )
+            .assign(standard_sum=lambda x: x.amount * x.standard_rate)
+            .loc[:, ("standard_sum")]
+            .sum()
+            * 0.3
+        )
+        self.assertAlmostEqual(tax_amount, 2986.50)
