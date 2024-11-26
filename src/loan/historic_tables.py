@@ -9,7 +9,7 @@ class HistoricTables:
     """Class for formatting historic finance tables."""
 
     # Minimum standard rate (swe: schablonintäkt) in percent.
-    minimum_standard_rate = 1.25
+    _minimum_standard_rate = 0.0125
 
     def __init__(
         self,
@@ -59,7 +59,7 @@ class HistoricTables:
         return (end_value / start_value) ** (1 / time_delta)
 
     @classmethod
-    def _expand_date_range(self, data_frame):
+    def _expand_date_range(cls, data_frame) -> pd.DataFrame:
         """Expand pandas date range and forward fill.
 
         Args:
@@ -114,6 +114,9 @@ class HistoricTables:
             .sort_values("date")
             .reset_index(drop=True)
         )
+        return_df.loc[:, ("government_borrowing_rate")] = (
+            return_df["government_borrowing_rate"] / 100
+        )
         return return_df
 
     @property
@@ -132,8 +135,12 @@ class HistoricTables:
         """
         return_df = HistoricTables._expand_date_range(self.government_borrowing_rate)
         return_df["standard_rate"] = (
-            return_df["government_borrowing_rate"].shift(1) + 1
-        ).apply(lambda x: 1.25 if x < 1.25 else x)
+            return_df["government_borrowing_rate"].shift(1) + 0.01
+        ).apply(
+            lambda x: (
+                self._minimum_standard_rate if x < self._minimum_standard_rate else x
+            )
+        )
         return_df["date"] = return_df.loc[
             (return_df["date"].dt.month == 11) & (return_df["date"].dt.day == 30),
             ("date"),
@@ -148,7 +155,6 @@ class HistoricTables:
         return_df.loc[return_df["date"].dt.month > 6, ("standard_rate")] = (
             return_df["standard_rate"] / 2
         )
-        return_df.loc[:, ("standard_rate")] = return_df["standard_rate"] / 100
         return return_df
 
     @property
@@ -176,4 +182,21 @@ class HistoricTables:
     def policy_rate(self) -> pd.DataFrame:
         """Formats policy rate."""
         return_df = self._policy_rate.sort_values("date").reset_index(drop=True)
+        return_df.loc[:, ("policy_rate")] = return_df["policy_rate"] / 100
+        return return_df
+
+    def _min_max_date_range(self) -> tuple:
+        """Return a range between min and max dates in class input data frames.
+
+        Returns:
+            A pandas data frame.
+        """
+        dataframes_to_check = [
+            self.consumer_price_index,
+            self.standard_rate,
+            self.omxs30,
+        ]
+        min_max_dates = pd.concat([i["date"] for i in dataframes_to_check])
+        min_max_range = pd.date_range(min_max_dates.min(), min_max_dates.max())
+        return_df = pd.DataFrame({"date": min_max_range})
         return return_df

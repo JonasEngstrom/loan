@@ -41,7 +41,7 @@ class TestHistoricTables(unittest.TestCase):
     def test_government_borrowing_rate(self):
         """Test that government_borrowing_rate property works as expected."""
         self.assertEqual(
-            self.checker.government_borrowing_rate.iloc[0, 1], np.float64(10.73)
+            self.checker.government_borrowing_rate.iloc[0, 1], np.float64(0.1073)
         )
 
     def test_consumer_price_index(self):
@@ -52,7 +52,7 @@ class TestHistoricTables(unittest.TestCase):
 
     def test_policy_rate(self):
         """Test that policy_rate property works as expected."""
-        self.assertEqual(self.checker.policy_rate.iloc[0, 1], np.float64(6.95))
+        self.assertEqual(self.checker.policy_rate.iloc[0, 1], np.float64(0.0695))
 
     def test__calculate_rate_of_change(self):
         start_value = 100
@@ -86,3 +86,13 @@ class TestHistoricTables(unittest.TestCase):
             * 0.3
         )
         self.assertAlmostEqual(tax_amount, 2986.50)
+
+    def test__min_max_date_range(self) -> None:
+        """Test that _min_max_date_range returns correct dates."""
+        test_data = self.checker._min_max_date_range()
+        self.assertEqual(self.checker._min_max_date_range().min().dt.year.item(), 1980)
+        self.assertEqual(self.checker._min_max_date_range().min().dt.month.item(), 1)
+        self.assertEqual(self.checker._min_max_date_range().min().dt.day.item(), 1)
+        self.assertEqual(self.checker._min_max_date_range().max().dt.year.item(), 2024)
+        self.assertEqual(self.checker._min_max_date_range().max().dt.month.item(), 12)
+        self.assertEqual(self.checker._min_max_date_range().max().dt.day.item(), 31)
