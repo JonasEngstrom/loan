@@ -96,3 +96,25 @@ class TestHistoricTables(unittest.TestCase):
         self.assertEqual(self.checker._min_max_date_range().max().dt.year.item(), 2024)
         self.assertEqual(self.checker._min_max_date_range().max().dt.month.item(), 12)
         self.assertEqual(self.checker._min_max_date_range().max().dt.day.item(), 31)
+
+    def test_main_table(self) -> None:
+        """Test that main table is correctly formatted."""
+        self.assertEqual(
+            list(self.checker.main_table.columns),
+            [
+                "date",
+                "omxs30_change_multiplier",
+                "policy_rate",
+                "standard_rate",
+                "consumer_price_index_change_multiplier",
+            ],
+        )
+        self.assertEqual(
+            list(self.checker.main_table.iloc[0, 1:]),
+            [
+                np.float64(0.9963649197106051),
+                np.float64(0.0695),
+                np.float64(0.08539999999999999),
+                np.float64(1.0),
+            ],
+        )

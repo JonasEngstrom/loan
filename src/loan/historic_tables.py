@@ -2,7 +2,7 @@ import pandas as pd
 
 from src.loan import local_data
 
-from datetime import datetime
+from datetime import datetime, date
 
 
 class HistoricTables:
@@ -10,35 +10,6 @@ class HistoricTables:
 
     # Minimum standard rate (swe: schablonintäkt) in percent.
     _minimum_standard_rate = 0.0125
-
-    def __init__(
-        self,
-        new_omxs30=local_data.local_omxs30(),
-        goverment_borrowing_rate=local_data.local_government_borrowing_rate(),
-        consumer_price_index=local_data.local_consumer_price_index(),
-        policy_rate=local_data.local_policy_rate(),
-        old_omxs30=local_data.old_omxs30_data(),
-    ) -> None:
-        """Initialized HistoricTables object.
-
-        Args:
-            new_omxs30: Pandas data frame from download.omxs30 or
-                local_data.local_omxs30.
-            goverment_borrowing_rate: Pandas data frame from
-                download.government_borrowing_rate or
-                local_data.local_government_borrowing_rate.
-            consumer_price_index: Pandas data frame from
-                download.consumer_price_index or
-                local_data.local_consumer_price_index.
-            policy_rate: Pandas data frame from download.policy_rate or
-                local_data.policy_rate.
-            old_omxs30: Pandas data frame from local_data.old_omxs30_data.
-        """
-        self._new_omxs30 = new_omxs30
-        self._goverment_borrowing_rate = goverment_borrowing_rate
-        self._consumer_price_index = consumer_price_index
-        self._policy_rate = policy_rate
-        self._old_omxs30 = old_omxs30
 
     @classmethod
     def _calculate_rate_of_change(
@@ -80,6 +51,35 @@ class HistoricTables:
             .ffill()
         )
         return return_df
+
+    def __init__(
+        self,
+        new_omxs30=local_data.local_omxs30(),
+        goverment_borrowing_rate=local_data.local_government_borrowing_rate(),
+        consumer_price_index=local_data.local_consumer_price_index(),
+        policy_rate=local_data.local_policy_rate(),
+        old_omxs30=local_data.old_omxs30_data(),
+    ) -> None:
+        """Initialized HistoricTables object.
+
+        Args:
+            new_omxs30: Pandas data frame from download.omxs30 or
+                local_data.local_omxs30.
+            goverment_borrowing_rate: Pandas data frame from
+                download.government_borrowing_rate or
+                local_data.local_government_borrowing_rate.
+            consumer_price_index: Pandas data frame from
+                download.consumer_price_index or
+                local_data.local_consumer_price_index.
+            policy_rate: Pandas data frame from download.policy_rate or
+                local_data.policy_rate.
+            old_omxs30: Pandas data frame from local_data.old_omxs30_data.
+        """
+        self._new_omxs30 = new_omxs30
+        self._goverment_borrowing_rate = goverment_borrowing_rate
+        self._consumer_price_index = consumer_price_index
+        self._policy_rate = policy_rate
+        self._old_omxs30 = old_omxs30
 
     @property
     def omxs30(self) -> pd.DataFrame:
@@ -183,6 +183,48 @@ class HistoricTables:
         """Formats policy rate."""
         return_df = self._policy_rate.sort_values("date").reset_index(drop=True)
         return_df.loc[:, ("policy_rate")] = return_df["policy_rate"] / 100
+        return return_df
+
+    @property
+    def main_table(self) -> pd.DataFrame:
+        """Return table with change multipliers.
+
+        Return a table of OMXS30, policy_rate, standard_rate, and consumer
+        price index change multipliers, that can be used for time series
+        calculations.
+
+        Returns:
+            A pandas data frame.
+        """
+        now = self.omxs30.date.max()
+        return_df = (
+            pd.merge(
+                pd.merge(
+                    pd.merge(
+                        pd.merge(
+                            self._min_max_date_range(),
+                            self.omxs30,
+                            how="left",
+                            on="date",
+                        ),
+                        self.policy_rate,
+                        how="left",
+                        on="date",
+                    ),
+                    self.standard_rate,
+                    how="left",
+                    on="date",
+                ),
+                self.consumer_price_index,
+                how="left",
+                on="date",
+            )
+            .ffill()
+            .dropna()
+            .query("date < @now")
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
         return return_df
 
     def _min_max_date_range(self) -> tuple:

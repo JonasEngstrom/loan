@@ -1,4 +1,8 @@
+import numpy as np
+
 from datetime import datetime, date
+
+from src.loan.historic_tables import HistoricTables
 
 
 class Mortgage:
@@ -15,6 +19,12 @@ class Mortgage:
         index_fund_value: Value of index fund.
         initial_principal: Original amount borrowed.
         principal: Amount borrowed.
+        omxs30_change_multiplier: Daily OMXS30 change multiplier.
+        bank_rate: Daily bank rate multiplier.
+        standard_rate: Yearly standard rate for calculating capital tax.
+        historic_date_range: Dates from where historic data is taken.
+        payoff_time: Planned years to pay off entire principal.
+        initial_days_offset: Initial offset to use in historic data.
     """
 
     # The following dictionaries contain cutoff values for minmum yearly
@@ -42,6 +52,8 @@ class Mortgage:
         85: 114.4,
         90: 196.42,
     }
+
+    _default_historic_tables = HistoricTables()
 
     @classmethod
     def _check_cutoff(cls, cutoff_dict: dict, cutoff_value: float) -> float:
@@ -90,12 +102,51 @@ class Mortgage:
         first_date_index = date_list.index(min(date_list))
         return first_date_index
 
+    @classmethod
+    def _calculate_daily_interest_rate(
+        cls, yearly_interest_rate: float, year: int
+    ) -> float:
+        """Convert yearly interest to daily interest.
+
+        Convert a yearly interest to a daily interest. In reality a - 1 should
+        be added at the end to calculate rate of change but this was omitted to
+        simplify further calculations usning the rate.
+
+        Args:
+            yearly_interest_rate: The yearly interest.
+            year: The calendar year.
+
+        Return:
+            A float.
+        """
+        daily_interest_rate = (1 + yearly_interest_rate) ** (
+            1 / (365 + cls._is_leap_year(year))
+        )
+        return daily_interest_rate
+
+    @classmethod
+    def _is_leap_year(cls, year: int) -> bool:
+        """Return True if leap year.
+
+        Returns:
+            A boolean.
+        """
+        try:
+            _ = date(year=year, month=2, day=29)
+            return True
+        except ValueError:
+            return False
+
     def __init__(
         self,
         asset_value: float,
         birth_date: str,
         household_gross_income: float,
         principal: float,
+        payoff_time: float,
+        interest_markup: float,
+        initial_days_offset: int = 0,
+        historic_tables=_default_historic_tables,
     ) -> None:
         """Initialize Mortgage instance.
 
@@ -104,6 +155,10 @@ class Mortgage:
             birth_date: Birth date of index fund owner.
             household_gross_income: Household income before tax.
             principal: Amount borrowed.
+            payoff_time: Number of years to pay off loan.
+            interest_markup: The markup on the policy rate, used by the bank.
+            initial_days_offset: Initial offset to use in historic data.
+            historic_tables: A HistoricTables object.
         """
         self.asset_value = asset_value
         self.birth_date = birth_date
@@ -112,6 +167,21 @@ class Mortgage:
         self.index_fund_value = 0
         self.initial_principal = principal
         self.principal = principal
+        self.omxs30_change_multiplier = np.array(
+            historic_tables.main_table.omxs30_change_multiplier
+        )
+        self.bank_rate = np.array(
+            historic_tables.main_table.apply(
+                lambda x: self._calculate_daily_interest_rate(
+                    x["policy_rate"] + interest_markup, x["date"].year
+                ),
+                axis=1,
+            )
+        )
+        self.standard_rate = np.array(historic_tables.main_table.standard_rate)
+        self.historic_date_range = np.array(historic_tables.main_table.date)
+        self.initial_days_offset = initial_days_offset
+        self.payoff_time = payoff_time
 
     @property
     def birth_date(self) -> date:

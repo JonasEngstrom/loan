@@ -3,6 +3,7 @@ import unittest
 from src.loan import mortgage
 
 from datetime import datetime, date
+import numpy as np
 
 
 class TestMortgage(unittest.TestCase):
@@ -16,6 +17,9 @@ class TestMortgage(unittest.TestCase):
             birth_date="2006-09-02",
             household_gross_income=2e6,
             principal=5e6,
+            payoff_time=25,
+            interest_markup=1e-2,
+            initial_days_offset=0,
         )
 
     def test___init__(self) -> None:
@@ -28,6 +32,17 @@ class TestMortgage(unittest.TestCase):
         self.assertEqual(self.checker.household_gross_income, 2e6)
         self.assertEqual(self.checker.initial_principal, 5e6)
         self.assertEqual(self.checker.principal, 5e6)
+        self.assertEqual(
+            self.checker.omxs30_change_multiplier[0], np.float64(0.9963649197106051)
+        )
+        self.assertEqual(self.checker.bank_rate[0], np.float64(1.0002096054462695))
+        self.assertEqual(self.checker.standard_rate[0], np.float64(0.08539999999999999))
+        self.assertEqual(
+            self.checker.historic_date_range[0],
+            np.datetime64("1994-06-01T00:00:00.000000000"),
+        )
+        self.assertEqual(self.checker.initial_days_offset, 0)
+        self.assertEqual(self.checker.payoff_time, 25)
 
     def test_loan_to_value_ratio(self) -> None:
         """Check that loan-to-value ratio calculates correctly."""
@@ -158,3 +173,30 @@ class TestMortgage(unittest.TestCase):
                 year=self.checker.current_date.year - actual_age, month=1, day=1
             )
             self.assertEqual(self.checker.rounded_age, rounded_age)
+
+    def test__is_leap_year(self) -> None:
+        """Test that leap years are correctly identified."""
+        self.assertFalse(self.checker._is_leap_year(2023))
+        self.assertTrue(self.checker._is_leap_year(2024))
+
+    def test__calculate_daily_interest_rate(self) -> None:
+        """Test that daily interest rate calculates correctly."""
+        initial_sum = 100
+        yearly_percentage = 0.3
+        leap_year = 2024
+        non_leap_year = 2023
+        daily_leap_year_rate = self.checker._calculate_daily_interest_rate(
+            yearly_percentage, leap_year
+        )
+        daily_non_leap_year_rate = self.checker._calculate_daily_interest_rate(
+            yearly_percentage, non_leap_year
+        )
+
+        self.assertAlmostEqual(
+            initial_sum * daily_leap_year_rate**366,
+            initial_sum * (1 + yearly_percentage),
+        )
+        self.assertAlmostEqual(
+            initial_sum * daily_non_leap_year_rate**365,
+            initial_sum * (1 + yearly_percentage),
+        )
