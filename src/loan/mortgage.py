@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from datetime import datetime, date
 
@@ -24,7 +25,7 @@ class Mortgage:
         standard_rate: Yearly standard rate for calculating capital tax.
         historic_date_range: Dates from where historic data is taken.
         payoff_time: Planned years to pay off entire principal.
-        initial_days_offset: Initial offset to use in historic data.
+        days_offset: Initial offset to use in historic data.
     """
 
     # The following dictionaries contain cutoff values for minmum yearly
@@ -145,7 +146,7 @@ class Mortgage:
         principal: float,
         payoff_time: float,
         interest_markup: float,
-        initial_days_offset: int = 0,
+        days_offset: int = 0,
         historic_tables=_default_historic_tables,
     ) -> None:
         """Initialize Mortgage instance.
@@ -157,7 +158,7 @@ class Mortgage:
             principal: Amount borrowed.
             payoff_time: Number of years to pay off loan.
             interest_markup: The markup on the policy rate, used by the bank.
-            initial_days_offset: Initial offset to use in historic data.
+            days_offset: Initial offset to use in historic data.
             historic_tables: A HistoricTables object.
         """
         self.asset_value = asset_value
@@ -180,8 +181,15 @@ class Mortgage:
         )
         self.standard_rate = np.array(historic_tables.main_table.standard_rate)
         self.historic_date_range = np.array(historic_tables.main_table.date)
-        self.initial_days_offset = initial_days_offset
+        self.days_offset = days_offset
         self.payoff_time = payoff_time
+        self._master_table = pd.DataFrame(
+            {
+                "date": [self.historic_date_range[days_offset]],
+                "principal": [self.principal],
+                "current_month_interest": [0],
+            }
+        )
 
     @property
     def birth_date(self) -> date:
@@ -248,3 +256,51 @@ class Mortgage:
             self.rounded_age
         ]
         return self.index_fund_value * risk_cost_per_million / 1e6
+
+    @property
+    def master_table(self) -> pd.DataFrame:
+        """Return master table."""
+        return self._master_table
+
+    def add_master_row(self) -> None:
+        """Add row to master table."""
+        idx = len(self.master_table) + self.days_offset
+
+        # Set date corresponding to index and initial offset.
+        new_date = self.historic_date_range[idx]
+
+        # Multiply previous principal with daily interest rate.
+        new_principal = (
+            self.master_table["principal"].iloc[-1] * self.bank_rate[idx - 1]
+        )
+
+        # Calculate change of principal during the current month, which
+        # corresponds to the accumulated interest during the month.
+        first_day_of_month = pd.Timestamp(new_date).replace(day=1)
+        first_day_of_month_principal = self.master_table.query(
+            "date == @first_day_of_month"
+        )
+
+        if first_day_of_month_principal.empty:
+            # print('hej')
+            new_current_month_interest = 0
+        else:
+            # print('hopp')
+            # print(first_day_of_month_principal)
+            # print(first_day_of_month_principal.loc[0, "principal"])
+            new_current_month_interest = (
+                new_principal
+                - first_day_of_month_principal.reset_index().loc[0, "principal"]
+            )
+
+        new_row = pd.DataFrame(
+            {
+                "date": [new_date],
+                "principal": [new_principal],
+                "current_month_interest": [new_current_month_interest],
+            }
+        )
+
+        self._master_table = pd.concat([self._master_table, new_row]).reset_index(
+            drop=True
+        )

@@ -4,6 +4,7 @@ from src.loan import mortgage
 
 from datetime import datetime, date
 import numpy as np
+import pandas as pd
 
 
 class TestMortgage(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestMortgage(unittest.TestCase):
             principal=5e6,
             payoff_time=25,
             interest_markup=1e-2,
-            initial_days_offset=0,
+            days_offset=0,
         )
 
     def test___init__(self) -> None:
@@ -41,7 +42,7 @@ class TestMortgage(unittest.TestCase):
             self.checker.historic_date_range[0],
             np.datetime64("1994-06-01T00:00:00.000000000"),
         )
-        self.assertEqual(self.checker.initial_days_offset, 0)
+        self.assertEqual(self.checker.days_offset, 0)
         self.assertEqual(self.checker.payoff_time, 25)
 
     def test_loan_to_value_ratio(self) -> None:
@@ -199,4 +200,32 @@ class TestMortgage(unittest.TestCase):
         self.assertAlmostEqual(
             initial_sum * daily_non_leap_year_rate**365,
             initial_sum * (1 + yearly_percentage),
+        )
+
+    def test_add_master_row(self):
+        """Test all columns of add_master_row."""
+        i = 0
+        while i < 400:
+            self.checker.add_master_row()
+            i += 1
+
+        # Check that date increases.
+        self.assertEqual(
+            self.checker.master_table.loc[1, "date"],
+            pd.Timestamp("1994-06-02 00:00:00"),
+        )
+
+        # Check that principal increases.
+        self.assertEqual(
+            self.checker.master_table.loc[1, "principal"],
+            np.float64(5001048.027231348),
+        )
+
+        # Check that current_month_interest resets avery month.
+        self.assertFalse(
+            any(
+                self.checker.master_table.query("date.dt.day == 1")[
+                    "current_month_interest"
+                ]
+            )
         )
