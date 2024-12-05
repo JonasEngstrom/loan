@@ -21,6 +21,7 @@ class TestMortgage(unittest.TestCase):
             payoff_time=25,
             interest_markup=1e-2,
             days_offset=0,
+            fraction_invested=0.5,
         )
 
     def test___init__(self) -> None:
@@ -228,4 +229,20 @@ class TestMortgage(unittest.TestCase):
                     "current_month_interest"
                 ]
             )
+        )
+
+        # Check that loan payment is calculated correctly.
+        self.assertEqual(
+            self.checker.master_table[
+                self.checker.master_table["date"].dt.is_month_end
+            ]["loan_payment"].iloc[0],
+            np.float64(42924.68525463715),
+        )
+
+        # Check that fund investment is calculated correctly.
+        self.assertEqual(
+            self.checker.master_table[
+                self.checker.master_table["date"].dt.is_month_end
+            ]["fund_investment"].iloc[0],
+            np.float64(8333.333333333334),
         )

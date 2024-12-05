@@ -26,6 +26,7 @@ class Mortgage:
         historic_date_range: Dates from where historic data is taken.
         payoff_time: Planned years to pay off entire principal.
         days_offset: Initial offset to use in historic data.
+        fraction_invested: Proportion of residual monthly payment invested.
     """
 
     # The following dictionaries contain cutoff values for minmum yearly
@@ -147,6 +148,7 @@ class Mortgage:
         payoff_time: float,
         interest_markup: float,
         days_offset: int = 0,
+        fraction_invested: int = 1,
         historic_tables=_default_historic_tables,
     ) -> None:
         """Initialize Mortgage instance.
@@ -160,6 +162,7 @@ class Mortgage:
             interest_markup: The markup on the policy rate, used by the bank.
             days_offset: Initial offset to use in historic data.
             historic_tables: A HistoricTables object.
+            fraction_invested: Proportion of residual monthly payment invested.
         """
         self.asset_value = asset_value
         self.birth_date = birth_date
@@ -183,11 +186,14 @@ class Mortgage:
         self.historic_date_range = np.array(historic_tables.main_table.date)
         self.days_offset = days_offset
         self.payoff_time = payoff_time
+        self.fraction_invested = fraction_invested
         self._master_table = pd.DataFrame(
             {
                 "date": [self.historic_date_range[days_offset]],
                 "principal": [self.principal],
                 "current_month_interest": [0],
+                "loan_payment": [0],
+                "fund_investment": [0],
             }
         )
 
@@ -262,6 +268,20 @@ class Mortgage:
         """Return master table."""
         return self._master_table
 
+    @property
+    def total_monthly_payment(self):
+        """Return required monthly payment to make payoff time."""
+        return self.initial_principal / (self.payoff_time * 12)
+
+    @property
+    def payment_split(self):
+        """Return split between loan payment and fund investment."""
+        fund_investment = self.total_monthly_payment * self.fraction_invested
+        loan_payment = (
+            self.total_monthly_payment - fund_investment + self.minimum_monthly_payment
+        )
+        return {"loan_payment": loan_payment, "fund_investment": fund_investment}
+
     def add_master_row(self) -> None:
         """Add row to master table."""
         idx = len(self.master_table) + self.days_offset
@@ -270,7 +290,7 @@ class Mortgage:
         new_date = self.historic_date_range[idx]
 
         # Multiply previous principal with daily interest rate.
-        new_principal = (
+        self.principal = (
             self.master_table["principal"].iloc[-1] * self.bank_rate[idx - 1]
         )
 
@@ -282,22 +302,29 @@ class Mortgage:
         )
 
         if first_day_of_month_principal.empty:
-            # print('hej')
             new_current_month_interest = 0
         else:
-            # print('hopp')
-            # print(first_day_of_month_principal)
-            # print(first_day_of_month_principal.loc[0, "principal"])
             new_current_month_interest = (
-                new_principal
+                self.principal
                 - first_day_of_month_principal.reset_index().loc[0, "principal"]
             )
+
+        # Calculate loan payment and fund investment.
+        payments = self.payment_split
+        payments["loan_payment"] += new_current_month_interest
+        if not pd.Timestamp(new_date).is_month_end:
+            for key in payments.keys():
+                payments[key] = 0
+        loan_payment = payments["loan_payment"]
+        fund_investment = payments["fund_investment"]
 
         new_row = pd.DataFrame(
             {
                 "date": [new_date],
-                "principal": [new_principal],
+                "principal": [self.principal],
                 "current_month_interest": [new_current_month_interest],
+                "loan_payment": [loan_payment],
+                "fund_investment": [fund_investment],
             }
         )
 
