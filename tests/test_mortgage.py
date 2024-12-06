@@ -246,3 +246,13 @@ class TestMortgage(unittest.TestCase):
             ]["fund_investment"].iloc[0],
             np.float64(8333.333333333334),
         )
+
+        # Check that loan payment affects principa column.
+        self.assertGreater(
+            self.checker.master_table["principal"].iloc[28],
+            self.checker.master_table["principal"].iloc[27],
+        )
+        self.assertLess(
+            self.checker.master_table["principal"].iloc[29],
+            self.checker.master_table["principal"].iloc[28],
+        )

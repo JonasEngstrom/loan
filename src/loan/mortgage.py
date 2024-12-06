@@ -191,6 +191,7 @@ class Mortgage:
             {
                 "date": [self.historic_date_range[days_offset]],
                 "principal": [self.principal],
+                "index_fund_value": [self.index_fund_value],
                 "current_month_interest": [0],
                 "loan_payment": [0],
                 "fund_investment": [0],
@@ -294,6 +295,12 @@ class Mortgage:
             self.master_table["principal"].iloc[-1] * self.bank_rate[idx - 1]
         )
 
+        # Multiply index fund value with index development.
+        self.index_fund_value = (
+            self.master_table["index_fund_value"].iloc[-1]
+            * self.omxs30_change_multiplier[idx - 1]
+        )
+
         # Calculate change of principal during the current month, which
         # corresponds to the accumulated interest during the month.
         first_day_of_month = pd.Timestamp(new_date).replace(day=1)
@@ -318,10 +325,15 @@ class Mortgage:
         loan_payment = payments["loan_payment"]
         fund_investment = payments["fund_investment"]
 
+        # Record loan and fund payments.
+        self.principal -= loan_payment
+        self.index_fund_value += fund_investment
+
         new_row = pd.DataFrame(
             {
                 "date": [new_date],
                 "principal": [self.principal],
+                "index_fund_value": [self.index_fund_value],
                 "current_month_interest": [new_current_month_interest],
                 "loan_payment": [loan_payment],
                 "fund_investment": [fund_investment],
