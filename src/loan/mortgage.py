@@ -26,6 +26,7 @@ class Mortgage:
         historic_date_range: Dates from where historic data is taken.
         payoff_time: Planned years to pay off entire principal.
         days_offset: Initial offset to use in historic data.
+        fund_fee: Fund fee as a yearly percentage.
         fraction_invested: Proportion of residual monthly payment invested.
     """
 
@@ -148,6 +149,7 @@ class Mortgage:
         payoff_time: float,
         interest_markup: float,
         days_offset: int = 0,
+        fund_fee: float = 0.004,
         fraction_invested: int = 1,
         historic_tables=_default_historic_tables,
     ) -> None:
@@ -161,6 +163,7 @@ class Mortgage:
             payoff_time: Number of years to pay off loan.
             interest_markup: The markup on the policy rate, used by the bank.
             days_offset: Initial offset to use in historic data.
+            fund_fee: Fund fee as a yearly percentage.
             historic_tables: A HistoricTables object.
             fraction_invested: Proportion of residual monthly payment invested.
         """
@@ -186,6 +189,7 @@ class Mortgage:
         self.historic_date_range = np.array(historic_tables.main_table.date)
         self.days_offset = days_offset
         self.payoff_time = payoff_time
+        self.fund_fee = fund_fee
         self.fraction_invested = fraction_invested
         self._master_table = pd.DataFrame(
             {
@@ -297,12 +301,13 @@ class Mortgage:
         new_date = self.historic_date_range[idx]
 
         # Multiply previous principal with daily interest rate.
-        self.principal = (
-            self.master_table["principal"].iloc[-1] * self.bank_rate[idx - 1]
-        )
+        self.principal = self.principal * self.bank_rate[idx - 1]
+
+        # Deduct fund fee.
+        self.fund_value -= self.fund_value * self.fund_fee / 365
 
         # Multiply index fund value with index development.
-        self.fund_value = self.master_table["fund_value"].iloc[-1] * (
+        self.fund_value = self.fund_value * (
             self.omxs30_change_multiplier[idx - 1]
             if not self.omxs30_change_multiplier[idx - 1] in [0, np.inf]
             else 1

@@ -21,6 +21,7 @@ class TestMortgage(unittest.TestCase):
             payoff_time=25,
             interest_markup=1e-2,
             days_offset=0,
+            fund_fee=0.004,
             fraction_invested=0.5,
         )
 
@@ -261,4 +262,10 @@ class TestMortgage(unittest.TestCase):
         self.assertGreater(
             self.checker.master_table["fund_value"].iloc[29],
             self.checker.master_table["fund_value"].iloc[28],
+        )
+
+        # Check that fund fee is deducted.
+        self.assertEqual(
+            self.checker.master_table.loc[56, "fund_value"],
+            np.float64(8916.021234228803),
         )
