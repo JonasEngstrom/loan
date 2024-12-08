@@ -28,6 +28,7 @@ class Mortgage:
         days_offset: Initial offset to use in historic data.
         fund_fee: Fund fee as a yearly percentage.
         fraction_invested: Proportion of residual monthly payment invested.
+        fund_tax_due: Fund tax amount due.
     """
 
     # The following dictionaries contain cutoff values for minmum yearly
@@ -217,6 +218,7 @@ class Mortgage:
         self.payoff_time = payoff_time
         self.fund_fee = fund_fee
         self.fraction_invested = fraction_invested
+        self.fund_tax_due = 0
         self._master_table = pd.DataFrame(
             {
                 "date": [self.historic_date_range[days_offset]],
@@ -373,8 +375,19 @@ class Mortgage:
             self.fund_value -= self.risk_cost
 
         # Deduct capital tax from insurance.
-        if pd.Timestamp(new_date).month in [1, 4, 7, 10] and pd.Timestamp.is_month_end:
-            pass
+        self.fund_tax_due += self._standard_sum(
+            fund_investment, pd.Timestamp(new_date), self.standard_rate[idx]
+        )
+        if pd.Timestamp(new_date).is_year_start:
+            self.fund_tax_due += self._standard_sum(
+                self.fund_value, pd.Timestamp(new_date), self.standard_rate[idx]
+            )
+        if (
+            pd.Timestamp(new_date).month in [1, 4, 7, 10]
+            and pd.Timestamp(new_date).is_month_end
+        ):
+            self.fund_value -= self.fund_tax_due
+            self.fund_tax_due = 0
 
         new_row = pd.DataFrame(
             {

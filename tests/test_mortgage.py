@@ -270,6 +270,9 @@ class TestMortgage(unittest.TestCase):
             np.float64(8916.014993013938),
         )
 
+        # Check that fund tax is calculated.
+        self.assertEqual(self.checker.fund_tax_due, np.float64(592.9999999999999))
+
     def test__standard_sum(self) -> None:
         """Check that _standard_sum returns expected value."""
         standard_rate = 0.0296
