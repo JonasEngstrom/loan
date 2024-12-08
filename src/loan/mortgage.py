@@ -55,6 +55,7 @@ class Mortgage:
         85: 114.4,
         90: 196.42,
     }
+    _capital_tax_rate = 0.3
 
     _default_historic_tables = HistoricTables()
 
@@ -139,6 +140,31 @@ class Mortgage:
             return True
         except ValueError:
             return False
+
+    @classmethod
+    def _standard_sum(
+        cls,
+        transaction_total: float,
+        date_of_transaction: pd.Timestamp,
+        standard_rate: float,
+    ) -> float:
+        """Calculate absolute tax for a transaction based on standard rate.
+
+        Args:
+            transaction_total: Total of a transaction.
+            date_of_transaction: Date of transaction.
+            standard_rate: Standard tax rate.
+
+        Returns:
+            A float of the total tax to pay on the transaction.
+        """
+        total_tax = (
+            transaction_total
+            / (2 if date_of_transaction.month >= 7 else 1)
+            * standard_rate
+            * cls._capital_tax_rate
+        )
+        return total_tax
 
     def __init__(
         self,
@@ -264,6 +290,7 @@ class Mortgage:
 
     @property
     def risk_cost(self) -> float:
+        """Return insurance risk cost."""
         risk_cost_per_million = self._risk_cost_per_million_by_age_cutoffs[
             self.rounded_age
         ]
@@ -340,6 +367,14 @@ class Mortgage:
         # Record loan and fund payments.
         self.principal -= loan_payment
         self.fund_value += fund_investment
+
+        # Deduct risk cost from insurance.
+        if pd.Timestamp(new_date).is_month_start:
+            self.fund_value -= self.risk_cost
+
+        # Deduct capital tax from insurance.
+        if pd.Timestamp(new_date).month in [1, 4, 7, 10] and pd.Timestamp.is_month_end:
+            pass
 
         new_row = pd.DataFrame(
             {

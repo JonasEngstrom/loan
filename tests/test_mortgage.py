@@ -267,5 +267,19 @@ class TestMortgage(unittest.TestCase):
         # Check that fund fee is deducted.
         self.assertEqual(
             self.checker.master_table.loc[56, "fund_value"],
-            np.float64(8916.021234228803),
+            np.float64(8916.014993013938),
         )
+
+    def test__standard_sum(self) -> None:
+        """Check that _standard_sum returns expected value."""
+        standard_rate = 0.0296
+        tax = type(self.checker)._standard_sum(
+            2e5, pd.Timestamp(2025, 1, 1), standard_rate
+        )
+        tax += type(self.checker)._standard_sum(
+            5e4, pd.Timestamp(2025, 2, 1), standard_rate
+        )
+        tax += type(self.checker)._standard_sum(
+            5e4, pd.Timestamp(2025, 8, 1), standard_rate
+        )
+        self.assertEqual(tax, 2442)
