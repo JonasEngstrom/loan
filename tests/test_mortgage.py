@@ -125,7 +125,7 @@ class TestMortgage(unittest.TestCase):
 
     def test_risk_cost(self) -> None:
         """Check that risk cost calculations are correct."""
-        self.checker.index_fund_value = 0.5e6
+        self.checker.fund_value = 0.5e6
         for (
             age,
             cost_per_million,
@@ -247,7 +247,7 @@ class TestMortgage(unittest.TestCase):
             np.float64(8333.333333333334),
         )
 
-        # Check that loan payment affects principa column.
+        # Check that loan payment affects principal column.
         self.assertGreater(
             self.checker.master_table["principal"].iloc[28],
             self.checker.master_table["principal"].iloc[27],
@@ -255,4 +255,10 @@ class TestMortgage(unittest.TestCase):
         self.assertLess(
             self.checker.master_table["principal"].iloc[29],
             self.checker.master_table["principal"].iloc[28],
+        )
+
+        # Check that fund investment affects index fund value column.
+        self.assertGreater(
+            self.checker.master_table["fund_value"].iloc[29],
+            self.checker.master_table["fund_value"].iloc[28],
         )

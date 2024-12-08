@@ -17,7 +17,7 @@ class Mortgage:
     Attributes:
         asset_value: Value of the asset mortgaged.
         household_gross_income: Household income before tax.
-        index_fund_value: Value of index fund.
+        fund_value: Value of index fund.
         initial_principal: Original amount borrowed.
         principal: Amount borrowed.
         omxs30_change_multiplier: Daily OMXS30 change multiplier.
@@ -168,7 +168,7 @@ class Mortgage:
         self.birth_date = birth_date
         self._current_date = datetime.now()
         self.household_gross_income = household_gross_income
-        self.index_fund_value = 0
+        self.fund_value = 0
         self.initial_principal = principal
         self.principal = principal
         self.omxs30_change_multiplier = np.array(
@@ -191,10 +191,11 @@ class Mortgage:
             {
                 "date": [self.historic_date_range[days_offset]],
                 "principal": [self.principal],
-                "index_fund_value": [self.index_fund_value],
+                "fund_value": [self.fund_value],
                 "current_month_interest": [0],
                 "loan_payment": [0],
                 "fund_investment": [0],
+                "principal_fund_delta": [self.principal_fund_delta],
             }
         )
 
@@ -262,7 +263,7 @@ class Mortgage:
         risk_cost_per_million = self._risk_cost_per_million_by_age_cutoffs[
             self.rounded_age
         ]
-        return self.index_fund_value * risk_cost_per_million / 1e6
+        return self.fund_value * risk_cost_per_million / 1e6
 
     @property
     def master_table(self) -> pd.DataFrame:
@@ -270,18 +271,23 @@ class Mortgage:
         return self._master_table
 
     @property
-    def total_monthly_payment(self):
+    def total_monthly_payment(self) -> float:
         """Return required monthly payment to make payoff time."""
         return self.initial_principal / (self.payoff_time * 12)
 
     @property
-    def payment_split(self):
+    def payment_split(self) -> dict:
         """Return split between loan payment and fund investment."""
         fund_investment = self.total_monthly_payment * self.fraction_invested
         loan_payment = (
             self.total_monthly_payment - fund_investment + self.minimum_monthly_payment
         )
         return {"loan_payment": loan_payment, "fund_investment": fund_investment}
+
+    @property
+    def principal_fund_delta(self) -> float:
+        """Return the difference between principal and fund value."""
+        return self.principal - self.fund_value
 
     def add_master_row(self) -> None:
         """Add row to master table."""
@@ -296,9 +302,10 @@ class Mortgage:
         )
 
         # Multiply index fund value with index development.
-        self.index_fund_value = (
-            self.master_table["index_fund_value"].iloc[-1]
-            * self.omxs30_change_multiplier[idx - 1]
+        self.fund_value = self.master_table["fund_value"].iloc[-1] * (
+            self.omxs30_change_multiplier[idx - 1]
+            if not self.omxs30_change_multiplier[idx - 1] in [0, np.inf]
+            else 1
         )
 
         # Calculate change of principal during the current month, which
@@ -327,16 +334,17 @@ class Mortgage:
 
         # Record loan and fund payments.
         self.principal -= loan_payment
-        self.index_fund_value += fund_investment
+        self.fund_value += fund_investment
 
         new_row = pd.DataFrame(
             {
                 "date": [new_date],
                 "principal": [self.principal],
-                "index_fund_value": [self.index_fund_value],
+                "fund_value": [self.fund_value],
                 "current_month_interest": [new_current_month_interest],
                 "loan_payment": [loan_payment],
                 "fund_investment": [fund_investment],
+                "principal_fund_delta": [self.principal_fund_delta],
             }
         )
 
