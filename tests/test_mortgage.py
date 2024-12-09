@@ -3,6 +3,8 @@ import unittest
 from src.loan import mortgage
 
 from datetime import datetime, date
+import numpy as np
+import pandas as pd
 
 
 class TestMortgage(unittest.TestCase):
@@ -16,6 +18,11 @@ class TestMortgage(unittest.TestCase):
             birth_date="2006-09-02",
             household_gross_income=2e6,
             principal=5e6,
+            payoff_time=25,
+            interest_markup=1e-2,
+            days_offset=0,
+            fund_fee=0.004,
+            fraction_invested=0.5,
         )
 
     def test___init__(self) -> None:
@@ -28,6 +35,17 @@ class TestMortgage(unittest.TestCase):
         self.assertEqual(self.checker.household_gross_income, 2e6)
         self.assertEqual(self.checker.initial_principal, 5e6)
         self.assertEqual(self.checker.principal, 5e6)
+        self.assertEqual(
+            self.checker.omxs30_change_multiplier[0], np.float64(0.9963649197106051)
+        )
+        self.assertEqual(self.checker.bank_rate[0], np.float64(1.0002096054462695))
+        self.assertEqual(self.checker.standard_rate[0], np.float64(0.08539999999999999))
+        self.assertEqual(
+            self.checker.historic_date_range[0],
+            np.datetime64("1994-06-01T00:00:00.000000000"),
+        )
+        self.assertEqual(self.checker.days_offset, 0)
+        self.assertEqual(self.checker.payoff_time, 25)
 
     def test_loan_to_value_ratio(self) -> None:
         """Check that loan-to-value ratio calculates correctly."""
@@ -108,7 +126,7 @@ class TestMortgage(unittest.TestCase):
 
     def test_risk_cost(self) -> None:
         """Check that risk cost calculations are correct."""
-        self.checker.index_fund_value = 0.5e6
+        self.checker.fund_value = 0.5e6
         for (
             age,
             cost_per_million,
@@ -158,3 +176,121 @@ class TestMortgage(unittest.TestCase):
                 year=self.checker.current_date.year - actual_age, month=1, day=1
             )
             self.assertEqual(self.checker.rounded_age, rounded_age)
+
+    def test__is_leap_year(self) -> None:
+        """Test that leap years are correctly identified."""
+        self.assertFalse(self.checker._is_leap_year(2023))
+        self.assertTrue(self.checker._is_leap_year(2024))
+
+    def test__calculate_daily_interest_rate(self) -> None:
+        """Test that daily interest rate calculates correctly."""
+        initial_sum = 100
+        yearly_percentage = 0.3
+        leap_year = 2024
+        non_leap_year = 2023
+        daily_leap_year_rate = self.checker._calculate_daily_interest_rate(
+            yearly_percentage, leap_year
+        )
+        daily_non_leap_year_rate = self.checker._calculate_daily_interest_rate(
+            yearly_percentage, non_leap_year
+        )
+
+        self.assertAlmostEqual(
+            initial_sum * daily_leap_year_rate**366,
+            initial_sum * (1 + yearly_percentage),
+        )
+        self.assertAlmostEqual(
+            initial_sum * daily_non_leap_year_rate**365,
+            initial_sum * (1 + yearly_percentage),
+        )
+
+    def test_add_master_row(self):
+        """Test all columns of add_master_row."""
+        i = 0
+        while i < 400:
+            self.checker.add_master_row()
+            i += 1
+
+        # Check that date increases.
+        self.assertEqual(
+            self.checker.master_table.loc[1, "date"],
+            pd.Timestamp("1994-06-02 00:00:00"),
+        )
+
+        # Check that principal increases.
+        self.assertEqual(
+            self.checker.master_table.loc[1, "principal"],
+            np.float64(5001048.027231348),
+        )
+
+        # Check that current_month_interest resets avery month.
+        self.assertFalse(
+            any(
+                self.checker.master_table.query("date.dt.day == 1")[
+                    "current_month_interest"
+                ]
+            )
+        )
+
+        # Check that loan payment is calculated correctly.
+        self.assertEqual(
+            self.checker.master_table[
+                self.checker.master_table["date"].dt.is_month_end
+            ]["loan_payment"].iloc[0],
+            np.float64(42924.68525463715),
+        )
+
+        # Check that fund investment is calculated correctly.
+        self.assertEqual(
+            self.checker.master_table[
+                self.checker.master_table["date"].dt.is_month_end
+            ]["fund_investment"].iloc[0],
+            np.float64(8333.333333333334),
+        )
+
+        # Check that loan payment affects principal column.
+        self.assertGreater(
+            self.checker.master_table["principal"].iloc[28],
+            self.checker.master_table["principal"].iloc[27],
+        )
+        self.assertLess(
+            self.checker.master_table["principal"].iloc[29],
+            self.checker.master_table["principal"].iloc[28],
+        )
+
+        # Check that fund investment affects index fund value column.
+        self.assertGreater(
+            self.checker.master_table["fund_value"].iloc[29],
+            self.checker.master_table["fund_value"].iloc[28],
+        )
+
+        # Check that fund fee is deducted.
+        self.assertEqual(
+            self.checker.master_table.loc[56, "fund_value"],
+            np.float64(8916.014993013938),
+        )
+
+        # Check that fund tax is calculated.
+        self.assertEqual(self.checker.fund_tax_due, np.float64(592.9999999999999))
+
+    def test__standard_sum(self) -> None:
+        """Check that _standard_sum returns expected value."""
+        standard_rate = 0.0296
+        tax = type(self.checker)._standard_sum(
+            2e5, pd.Timestamp(2025, 1, 1), standard_rate
+        )
+        tax += type(self.checker)._standard_sum(
+            5e4, pd.Timestamp(2025, 2, 1), standard_rate
+        )
+        tax += type(self.checker)._standard_sum(
+            5e4, pd.Timestamp(2025, 8, 1), standard_rate
+        )
+        self.assertEqual(tax, 2442)
+
+    def test_expand_master_table(self) -> None:
+        """Check both add_cumulative_interest and expand_master_table."""
+        self.checker.expand_master_table(60)
+        self.assertEqual(
+            self.checker.master_table.cumulative_interest.max(),
+            np.float64(61774.29544133041),
+        )

@@ -1,4 +1,9 @@
+import numpy as np
+import pandas as pd
+
 from datetime import datetime, date
+
+from src.loan.historic_tables import HistoricTables
 
 
 class Mortgage:
@@ -12,9 +17,18 @@ class Mortgage:
     Attributes:
         asset_value: Value of the asset mortgaged.
         household_gross_income: Household income before tax.
-        index_fund_value: Value of index fund.
+        fund_value: Value of index fund.
         initial_principal: Original amount borrowed.
         principal: Amount borrowed.
+        omxs30_change_multiplier: Daily OMXS30 change multiplier.
+        bank_rate: Daily bank rate multiplier.
+        standard_rate: Yearly standard rate for calculating capital tax.
+        historic_date_range: Dates from where historic data is taken.
+        payoff_time: Planned years to pay off entire principal.
+        days_offset: Initial offset to use in historic data.
+        fund_fee: Fund fee as a yearly percentage.
+        fraction_invested: Proportion of residual monthly payment invested.
+        fund_tax_due: Fund tax amount due.
     """
 
     # The following dictionaries contain cutoff values for minmum yearly
@@ -42,6 +56,9 @@ class Mortgage:
         85: 114.4,
         90: 196.42,
     }
+    _capital_tax_rate = 0.3
+
+    _default_historic_tables = HistoricTables()
 
     @classmethod
     def _check_cutoff(cls, cutoff_dict: dict, cutoff_value: float) -> float:
@@ -90,12 +107,78 @@ class Mortgage:
         first_date_index = date_list.index(min(date_list))
         return first_date_index
 
+    @classmethod
+    def _calculate_daily_interest_rate(
+        cls, yearly_interest_rate: float, year: int
+    ) -> float:
+        """Convert yearly interest to daily interest.
+
+        Convert a yearly interest to a daily interest. In reality a - 1 should
+        be added at the end to calculate rate of change but this was omitted to
+        simplify further calculations usning the rate.
+
+        Args:
+            yearly_interest_rate: The yearly interest.
+            year: The calendar year.
+
+        Return:
+            A float.
+        """
+        daily_interest_rate = (1 + yearly_interest_rate) ** (
+            1 / (365 + cls._is_leap_year(year))
+        )
+        return daily_interest_rate
+
+    @classmethod
+    def _is_leap_year(cls, year: int) -> bool:
+        """Return True if leap year.
+
+        Returns:
+            A boolean.
+        """
+        try:
+            _ = date(year=year, month=2, day=29)
+            return True
+        except ValueError:
+            return False
+
+    @classmethod
+    def _standard_sum(
+        cls,
+        transaction_total: float,
+        date_of_transaction: pd.Timestamp,
+        standard_rate: float,
+    ) -> float:
+        """Calculate absolute tax for a transaction based on standard rate.
+
+        Args:
+            transaction_total: Total of a transaction.
+            date_of_transaction: Date of transaction.
+            standard_rate: Standard tax rate.
+
+        Returns:
+            A float of the total tax to pay on the transaction.
+        """
+        total_tax = (
+            transaction_total
+            / (2 if date_of_transaction.month >= 7 else 1)
+            * standard_rate
+            * cls._capital_tax_rate
+        )
+        return total_tax
+
     def __init__(
         self,
         asset_value: float,
         birth_date: str,
         household_gross_income: float,
         principal: float,
+        payoff_time: float,
+        interest_markup: float,
+        days_offset: int = 0,
+        fund_fee: float = 0.004,
+        fraction_invested: int = 1,
+        historic_tables=_default_historic_tables,
     ) -> None:
         """Initialize Mortgage instance.
 
@@ -104,14 +187,49 @@ class Mortgage:
             birth_date: Birth date of index fund owner.
             household_gross_income: Household income before tax.
             principal: Amount borrowed.
+            payoff_time: Number of years to pay off loan.
+            interest_markup: The markup on the policy rate, used by the bank.
+            days_offset: Initial offset to use in historic data.
+            fund_fee: Fund fee as a yearly percentage.
+            historic_tables: A HistoricTables object.
+            fraction_invested: Proportion of residual monthly payment invested.
         """
         self.asset_value = asset_value
         self.birth_date = birth_date
         self._current_date = datetime.now()
         self.household_gross_income = household_gross_income
-        self.index_fund_value = 0
+        self.fund_value = 0
         self.initial_principal = principal
         self.principal = principal
+        self.omxs30_change_multiplier = np.array(
+            historic_tables.main_table.omxs30_change_multiplier
+        )
+        self.bank_rate = np.array(
+            historic_tables.main_table.apply(
+                lambda x: self._calculate_daily_interest_rate(
+                    x["policy_rate"] + interest_markup, x["date"].year
+                ),
+                axis=1,
+            )
+        )
+        self.standard_rate = np.array(historic_tables.main_table.standard_rate)
+        self.historic_date_range = np.array(historic_tables.main_table.date)
+        self.days_offset = days_offset
+        self.payoff_time = payoff_time
+        self.fund_fee = fund_fee
+        self.fraction_invested = fraction_invested
+        self.fund_tax_due = 0
+        self._master_table = pd.DataFrame(
+            {
+                "date": [self.historic_date_range[days_offset]],
+                "principal": [self.principal],
+                "fund_value": [self.fund_value],
+                "current_month_interest": [0],
+                "loan_payment": [0],
+                "fund_investment": [0],
+                "principal_fund_delta": [self.principal_fund_delta],
+            }
+        )
 
     @property
     def birth_date(self) -> date:
@@ -174,7 +292,134 @@ class Mortgage:
 
     @property
     def risk_cost(self) -> float:
+        """Return insurance risk cost."""
         risk_cost_per_million = self._risk_cost_per_million_by_age_cutoffs[
             self.rounded_age
         ]
-        return self.index_fund_value * risk_cost_per_million / 1e6
+        return self.fund_value * risk_cost_per_million / 1e6
+
+    @property
+    def master_table(self) -> pd.DataFrame:
+        """Return master table."""
+        return self._master_table
+
+    @property
+    def total_monthly_payment(self) -> float:
+        """Return required monthly payment to make payoff time."""
+        return self.initial_principal / (self.payoff_time * 12)
+
+    @property
+    def payment_split(self) -> dict:
+        """Return split between loan payment and fund investment."""
+        fund_investment = self.total_monthly_payment * self.fraction_invested
+        loan_payment = (
+            self.total_monthly_payment - fund_investment + self.minimum_monthly_payment
+        )
+        return {"loan_payment": loan_payment, "fund_investment": fund_investment}
+
+    @property
+    def principal_fund_delta(self) -> float:
+        """Return the difference between principal and fund value."""
+        return self.principal - self.fund_value
+
+    def add_master_row(self) -> None:
+        """Add row to master table."""
+        idx = len(self.master_table) + self.days_offset
+
+        # Set date corresponding to index and initial offset.
+        new_date = self.historic_date_range[idx]
+
+        # Multiply previous principal with daily interest rate.
+        self.principal = self.principal * self.bank_rate[idx - 1]
+
+        # Deduct fund fee.
+        self.fund_value -= self.fund_value * self.fund_fee / 365
+
+        # Multiply index fund value with index development.
+        self.fund_value = self.fund_value * (
+            self.omxs30_change_multiplier[idx - 1]
+            if not self.omxs30_change_multiplier[idx - 1] in [0, np.inf]
+            else 1
+        )
+
+        # Calculate change of principal during the current month, which
+        # corresponds to the accumulated interest during the month.
+        first_day_of_month = pd.Timestamp(new_date).replace(day=1)
+        first_day_of_month_principal = self.master_table.query(
+            "date == @first_day_of_month"
+        )
+
+        if first_day_of_month_principal.empty:
+            new_current_month_interest = 0
+        else:
+            new_current_month_interest = (
+                self.principal
+                - first_day_of_month_principal.reset_index().loc[0, "principal"]
+            )
+
+        # Calculate loan payment and fund investment.
+        payments = self.payment_split
+        payments["loan_payment"] += new_current_month_interest
+        if not pd.Timestamp(new_date).is_month_end:
+            for key in payments.keys():
+                payments[key] = 0
+        loan_payment = payments["loan_payment"]
+        fund_investment = payments["fund_investment"]
+
+        # Record loan and fund payments.
+        self.principal -= loan_payment
+        self.fund_value += fund_investment
+
+        # Deduct risk cost from insurance.
+        if pd.Timestamp(new_date).is_month_start:
+            self.fund_value -= self.risk_cost
+
+        # Deduct capital tax from insurance.
+        self.fund_tax_due += self._standard_sum(
+            fund_investment, pd.Timestamp(new_date), self.standard_rate[idx]
+        )
+        if pd.Timestamp(new_date).is_year_start:
+            self.fund_tax_due += self._standard_sum(
+                self.fund_value, pd.Timestamp(new_date), self.standard_rate[idx]
+            )
+        if (
+            pd.Timestamp(new_date).month in [1, 4, 7, 10]
+            and pd.Timestamp(new_date).is_month_end
+        ):
+            self.fund_value -= self.fund_tax_due
+            self.fund_tax_due = 0
+
+        new_row = pd.DataFrame(
+            {
+                "date": [new_date],
+                "principal": [self.principal],
+                "fund_value": [self.fund_value],
+                "current_month_interest": [new_current_month_interest],
+                "loan_payment": [loan_payment],
+                "fund_investment": [fund_investment],
+                "principal_fund_delta": [self.principal_fund_delta],
+            }
+        )
+
+        self._master_table = pd.concat([self._master_table, new_row]).reset_index(
+            drop=True
+        )
+
+    def add_cumlative_interest(self) -> None:
+        """Add cumulative interest column to master table."""
+        self.master_table.loc[
+            self.master_table.date.dt.is_month_end, "cumulative_interest"
+        ] = self.master_table.loc[self.master_table.date.dt.is_month_end][
+            "current_month_interest"
+        ].cumsum()
+
+    def expand_master_table(self, days: int = None) -> None:
+        """Expand master_table to a certain number of days.
+
+        Args:
+            days: Days to expand table. Defaults to payoff time.
+        """
+        days = (self.payoff_time * 365) if days is None else days
+        for _ in range(days):
+            self.add_master_row()
+        self.add_cumlative_interest()
