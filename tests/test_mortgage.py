@@ -286,3 +286,11 @@ class TestMortgage(unittest.TestCase):
             5e4, pd.Timestamp(2025, 8, 1), standard_rate
         )
         self.assertEqual(tax, 2442)
+
+    def test_expand_master_table(self) -> None:
+        """Check both add_cumulative_interest and expand_master_table."""
+        self.checker.expand_master_table(60)
+        self.assertEqual(
+            self.checker.master_table.cumulative_interest.max(),
+            np.float64(61774.29544133041),
+        )

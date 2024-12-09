@@ -404,3 +404,22 @@ class Mortgage:
         self._master_table = pd.concat([self._master_table, new_row]).reset_index(
             drop=True
         )
+
+    def add_cumlative_interest(self) -> None:
+        """Add cumulative interest column to master table."""
+        self.master_table.loc[
+            self.master_table.date.dt.is_month_end, "cumulative_interest"
+        ] = self.master_table.loc[self.master_table.date.dt.is_month_end][
+            "current_month_interest"
+        ].cumsum()
+
+    def expand_master_table(self, days: int = None) -> None:
+        """Expand master_table to a certain number of days.
+
+        Args:
+            days: Days to expand table. Defaults to payoff time.
+        """
+        days = (self.payoff_time * 365) if days is None else days
+        for _ in range(days):
+            self.add_master_row()
+        self.add_cumlative_interest()
