@@ -237,7 +237,7 @@ class TestMortgage(unittest.TestCase):
             self.checker.master_table[
                 self.checker.master_table["date"].dt.is_month_end
             ]["loan_payment"].iloc[0],
-            np.float64(42924.68525463715),
+            np.float64(40841.35192130382),
         )
 
         # Check that fund investment is calculated correctly.
@@ -245,7 +245,7 @@ class TestMortgage(unittest.TestCase):
             self.checker.master_table[
                 self.checker.master_table["date"].dt.is_month_end
             ]["fund_investment"].iloc[0],
-            np.float64(8333.333333333334),
+            np.float64(6250.0),
         )
 
         # Check that loan payment affects principal column.
@@ -267,7 +267,7 @@ class TestMortgage(unittest.TestCase):
         # Check that fund fee is deducted.
         self.assertEqual(
             self.checker.master_table.loc[56, "fund_value"],
-            np.float64(8916.014993013938),
+            np.float64(6687.011244760455),
         )
 
         # Check that fund tax is calculated.
@@ -292,5 +292,23 @@ class TestMortgage(unittest.TestCase):
         self.checker.expand_master_table(60)
         self.assertEqual(
             self.checker.master_table.cumulative_interest.max(),
-            np.float64(61774.29544133041),
+            np.float64(61787.39051659498),
         )
+
+    def test_max_start_offset(self) -> None:
+        """Check thtat max_start_offset calculates correctly."""
+        self.assertEqual(self.checker.max_start_offset, 2003)
+
+    def test_summary_stats(self) -> None:
+        """Check that summary stats calculate correctly."""
+        self.assertEqual(
+            self.checker.summary_stats["years_to_break_even"], np.float64(0.0)
+        )
+        self.assertTrue(
+            np.isnan(self.checker.summary_stats["interest_paid_at_break_even"])
+        )
+        self.assertEqual(
+            self.checker.summary_stats["max_principal_fund_delta"],
+            np.float64(5000000.0),
+        )
+        self.assertTrue(np.isnan(self.checker.summary_stats["max_interest"]))

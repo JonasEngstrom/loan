@@ -311,16 +311,54 @@ class Mortgage:
     @property
     def payment_split(self) -> dict:
         """Return split between loan payment and fund investment."""
-        fund_investment = self.total_monthly_payment * self.fraction_invested
-        loan_payment = (
-            self.total_monthly_payment - fund_investment + self.minimum_monthly_payment
-        )
+        fund_investment = (
+            self.total_monthly_payment - self.minimum_monthly_payment
+        ) * self.fraction_invested
+        loan_payment = self.total_monthly_payment - fund_investment
         return {"loan_payment": loan_payment, "fund_investment": fund_investment}
 
     @property
     def principal_fund_delta(self) -> float:
         """Return the difference between principal and fund value."""
         return self.principal - self.fund_value
+
+    @property
+    def summary_stats(self) -> dict:
+        """Return summary stats from master_table."""
+        if not "cumulative_interest" in self.master_table:
+            self.add_cumlative_interest()
+
+        break_even_index = self.master_table[
+            self.master_table.principal_fund_delta.abs()
+            == self.master_table.principal_fund_delta.abs().min()
+        ].index
+        years_to_break_even = break_even_index.values[0] / 365
+        interest_paid_at_break_even = (
+            self.master_table["cumulative_interest"].iloc[break_even_index].values[0]
+        )
+        max_index = self.master_table.index.max()
+        number_of_years = max_index / 365
+        max_principal_fund_delta = self.master_table["principal_fund_delta"].iloc[
+            max_index
+        ]
+        max_interest = self.master_table["cumulative_interest"].iloc[max_index]
+
+        return {
+            "years_to_break_even": years_to_break_even,
+            "interest_paid_at_break_even": interest_paid_at_break_even,
+            "payoff_time": number_of_years,
+            "max_principal_fund_delta": max_principal_fund_delta,
+            "max_interest": max_interest,
+        }
+
+    @property
+    def max_start_offset(self) -> int:
+        """Return maximum start offset given payoff time and bank rate data.
+
+        Returns:
+            An integer representing a number of days.
+        """
+        return len(self.bank_rate) - 25 * 365 - 1
 
     def add_master_row(self) -> None:
         """Add row to master table."""
@@ -412,6 +450,9 @@ class Mortgage:
         ] = self.master_table.loc[self.master_table.date.dt.is_month_end][
             "current_month_interest"
         ].cumsum()
+        self.master_table["cumulative_interest"] = self.master_table[
+            "cumulative_interest"
+        ].ffill()
 
     def expand_master_table(self, days: int = None) -> None:
         """Expand master_table to a certain number of days.
